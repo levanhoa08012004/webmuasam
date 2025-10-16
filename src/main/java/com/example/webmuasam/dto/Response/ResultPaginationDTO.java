@@ -21,5 +21,6 @@ public class ResultPaginationDTO {
         int pageSize;
         int pages;
         long total;
+        String sort;
     }
 }

@@ -35,11 +35,13 @@ public class DatabaseInititalizer implements CommandLineRunner {
         long countUser = this.userRepository.count();
         if(countPermission == 0) {
             ArrayList<Permission> arr = new ArrayList<>();
+            arr.add(new Permission("Get all cart item by cartId", "/api/v1/cartitems/{id}", "GET", "CARTITEMS"));
+            arr.add(new Permission("Get cart", "/api/v1/cartitems/cart", "GET", "CARTITEMS"));
             arr.add(new Permission("Create a cart item", "/api/v1/cartitems", "POST", "CARTITEMS"));
             arr.add(new Permission("increase a cart item", "/api/v1/cartitems/incre/{id}", "PUT", "CARTITEMS"));
             arr.add(new Permission("reduce a cart item", "/api/v1/cartitems/des/{id}", "PUT", "CARTITEMS"));
             arr.add(new Permission("Delete a cart item", "/api/v1/cartitems/{id}", "DELETE", "CARTITEMS"));
-            arr.add(new Permission("Get all cart item", "/api/v1/cartitems/{id}", "GET", "CARTITEMS"));
+            arr.add(new Permission("Update cart item", "/api/v1/cartitems/update", "PUT", "CARTITEMS"));
 
             arr.add(new Permission("Create a category", "/api/v1/categories", "POST", "CATEGORIES"));
             arr.add(new Permission("Update a category", "/api/v1/categories", "PUT", "CATEGORIES"));
@@ -54,10 +56,12 @@ public class DatabaseInititalizer implements CommandLineRunner {
             arr.add(new Permission("Get all Permission", "/api/v1/permissions", "GET", "PERMISSIONS"));
 
             arr.add(new Permission("Create a product variants", "/api/v1/product_variants/{id}", "POST", "PRODUCTVARIANTS"));
-            arr.add(new Permission("Update a product variants", "/api/v1/product_variants", "PUT", "PRODUCTVARIANTS"));
+            arr.add(new Permission("Update a product variants", "/api/v1/product_variants/{id}", "PUT", "PRODUCTVARIANTS"));
             arr.add(new Permission("delete a product variants", "/api/v1/product_variants/{id}", "DELETE", "PRODUCTVARIANTS"));
             arr.add(new Permission("Get a product variants", "/api/v1/product_variants/{id}", "GET", "PRODUCTVARIANTS"));
             arr.add(new Permission("Get all product variants by product id", "/api/v1/product_variants/all/{id}", "GET", "PRODUCTVARIANTS"));
+            arr.add(new Permission("Get all product variants by product id and color and size", "/api/v1/product_variants", "GET", "PRODUCTVARIANTS"));
+
 
             arr.add(new Permission("Create a user", "/api/v1/users", "POST", "USERS"));
             arr.add(new Permission("Update a user", "/api/v1/users", "PUT", "USERS"));
@@ -76,13 +80,33 @@ public class DatabaseInititalizer implements CommandLineRunner {
             arr.add(new Permission("delete a product", "/api/v1/products/{id}", "DELETE", "PRODUCTS"));
             arr.add(new Permission("Get a product", "/api/v1/products/{id}", "GET", "PRODUCTS"));
             arr.add(new Permission("Get all product", "/api/v1/products", "GET", "PRODUCTS"));
+            arr.add(new Permission("Get all product best seller","/api/v1/products/best-selling","GET", "PRODUCTS"));
 
-            arr.add(new Permission("order by vnpay", "/api/v1/orders", "POST", "ORDERS"));
+
+            arr.add(new Permission("order by momo create qr", "/api/v1/momo/create", "POST", "ORDERS"));
+            arr.add(new Permission("order by momo", "/api/v1/momo/ipn-handler", "GET", "ORDERS"));
             arr.add(new Permission("order by cash", "/api/v1/orders/cash", "POST", "ORDERS"));
             arr.add(new Permission("delete a order", "/api/v1/orders/{id}", "DELETE", "ORDERS"));
             arr.add(new Permission("Get all order by user", "/api/v1/orders/user", "GET", "ORDERS"));
+            arr.add(new Permission("Get order status by id", "/api/v1/orders/{id}/status", "GET", "ORDERS"));
+            arr.add(new Permission("Get order by id", "/api/v1/orders/{id}", "GET", "ORDERS"));
+            arr.add(new Permission("Get all order by status", "/api/v1/orders", "GET", "ORDERS"));
+            arr.add(new Permission("Put change order status for admin", "/api/v1/orders/status-admin", "PUT", "ORDERS"));
+            arr.add(new Permission("Put change order status for shipper", "/api/v1/orders/status", "PUT", "ORDERS"));
+            arr.add(new Permission("Get all order by day", "/api/v1/orders/day", "GET", "ORDERS"));
+            arr.add(new Permission("Get all order by month", "/api/v1/orders/month", "GET", "ORDERS"));
+            arr.add(new Permission("Get all order by year", "/api/v1/orders/year", "GET", "ORDERS"));
 
-            arr.add(new Permission("Payment vnpay", "/api/v1/payments/vnpay_ipn", "GET", "VNPAY"));
+            arr.add(new Permission("Get a review by product id", "/api/v1/reviews", "GET", "REVIEWS"));
+            arr.add(new Permission("Post a review", "/api/v1/reivews", "POST", "REVIEWS"));
+
+            arr.add(new Permission("Create a voucher", "/api/v1/voucher", "POST", "VOUCHERES"));
+            arr.add(new Permission("Update a voucher", "/api/v1/voucher", "PUT", "VOUCHERES"));
+            arr.add(new Permission("delete a voucher", "/api/v1/voucher/{id}", "DELETE", "VOUCHERES"));
+            arr.add(new Permission("Get a voucher", "/api/v1/voucher/{id}", "GET", "VOUCHERES"));
+            arr.add(new Permission("Get all voucher", "/api/v1/voucher", "GET", "VOUCHERES"));
+            arr.add(new Permission("Check a voucher", "/api/v1/voucher/check", "GET", "VOUCHERES"));
+
 
 
             this.permissionRepository.saveAll(arr);

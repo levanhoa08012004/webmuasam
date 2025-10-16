@@ -10,6 +10,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CreateCartItemRequest {
     Long cartId;
-    Long productVariantId;
+    Long variantId;
     int quantity;
 }

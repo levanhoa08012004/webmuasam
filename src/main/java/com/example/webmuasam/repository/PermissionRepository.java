@@ -13,6 +13,8 @@ import java.util.List;
 @Repository
 public interface PermissionRepository extends JpaRepository<Permission, Long>, JpaSpecificationExecutor<Permission> {
     Page<Permission> findAll(Specification<Permission> spec, Pageable pageable);
+    boolean existsByApiPathAndMethodAndModuleAndIdNot(String apiPath, String method, String module,Long Id);
     boolean existsByApiPathAndMethodAndModule(String apiPath, String method, String module);
+
     List<Permission> findByIdIn(List<Long> id);
 }

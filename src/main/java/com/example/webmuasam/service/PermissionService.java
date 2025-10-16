@@ -27,7 +27,7 @@ public class PermissionService {
 
     public Permission updatePermission(Permission permission) throws AppException {
         Permission oldPermission = this.permissionRepository.findById(permission.getId()).orElseThrow(()-> new AppException("Permission không tồn tại"));
-        if(this.permissionRepository.existsByApiPathAndMethodAndModule(permission.getApiPath(), permission.getMethod(), permission.getModule())) {
+        if(this.permissionRepository.existsByApiPathAndMethodAndModuleAndIdNot(permission.getApiPath(), permission.getMethod(), permission.getModule(),permission.getId())) {
             throw new AppException("Permission đã tồn tại");
         }
         if(oldPermission !=null){

@@ -1,34 +1,38 @@
 package com.example.webmuasam.entity;
 
-
 import com.example.webmuasam.util.SecurityUtil;
-import com.example.webmuasam.util.constant.PaymentMethod;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Getter
 @Setter
-@AllArgsConstructor
-@NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "payments")
-public class Payment {
-
+@NoArgsConstructor
+@AllArgsConstructor
+public class Review {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
-    double total_price;
+    Integer rating;
+    String comment;
 
-    @Enumerated(EnumType.STRING)
-    PaymentMethod payment_method;
+    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
+    @JsonIgnore
+    List<Images> images;
 
-    @OneToOne
-    @JoinColumn(name="order_id")
-    Order order;
+    @ManyToOne
+    @JoinColumn(name = "product_id")
+    Product product;
+
+    @ManyToOne
+    @JoinColumn(name="user_id")
+    User user;
 
     Instant createdAt;
     Instant updatedAt;

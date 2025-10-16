@@ -21,7 +21,7 @@ public class PermissionInterceptor implements HandlerInterceptor {
 
 
     //dùng transactional ở đây là vì class này chưa chạy đến controller
-    //nên chưa có một phiên đăng nhập nào đến database nên chưa cần
+    //nên chưa có một phiên đăng nhập nào đến database nên cần
     //phải dùng transactional để cho java tạo một phiên đăng nhập khi nào kết thúc thì xóa
     @Transactional
     @Override

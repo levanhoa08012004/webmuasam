@@ -1,6 +1,7 @@
 package com.example.webmuasam.dto.Response;
 
 
+import com.example.webmuasam.entity.ProductVariant;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -14,7 +15,7 @@ public class ProductVariantResponse {
     String color;
     String size;
     int stockQuantity;
-    Product product;
+    ProductResponse productResponse;
 
 
 
@@ -23,9 +24,8 @@ public class ProductVariantResponse {
     @AllArgsConstructor
     @NoArgsConstructor
     @FieldDefaults(level = AccessLevel.PRIVATE)
-    public static class Product{
+    public static class ProductResponse {
         Long productId;
         String productName;
     }
-
 }

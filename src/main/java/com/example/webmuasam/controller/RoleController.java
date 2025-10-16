@@ -9,6 +9,7 @@ import com.turkraft.springfilter.boot.Filter;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +25,7 @@ public class RoleController {
     @PostMapping
     @ApiMessage("create role success")
     public ResponseEntity<Role> createRole(@Valid @RequestBody Role role) throws AppException {
-        return ResponseEntity.ok().body(this.roleService.createRole(role));
+        return ResponseEntity.status(HttpStatus.CREATED).body(this.roleService.createRole(role));
     }
 
     @PutMapping

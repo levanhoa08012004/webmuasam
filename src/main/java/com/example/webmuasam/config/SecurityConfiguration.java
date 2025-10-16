@@ -4,6 +4,7 @@ package com.example.webmuasam.config;
 import com.example.webmuasam.util.SecurityUtil;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.util.Base64;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,9 +40,20 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
         String[] whiteList = {"/","/api/v1/auth/login","/api/v1/auth/refresh","/api/v1/auth/register",
-                "/api/v1/users",
-                "/api/v1/users/**",
-
+                "/api/v1/roles",
+                "/api/momo/ipn-handler",
+                "/api/v1/auth/email",
+                "/api/v1/auth/email/**",
+                "/api/v1/product/best-selling",
+                "/api/v1/cartitems/cart",
+                "/api/v1/cartitems/update",
+                "/api/v1/voucher",
+                "/api/v1/voucher/**",
+                "/api/v1/auth/account",
+                "/api/v1/auth/logout",
+                "/api/v1/auth/change-password",
+                "/api/v1/reviews",
+                "/api/v1/reviews/**",
         };
 
         http
@@ -50,17 +62,23 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(
                         authz -> authz
                                 .requestMatchers(whiteList).permitAll()
-                                .requestMatchers("/","/api/v1/auth/login").permitAll()
-                                .requestMatchers("/api/v1/payments/vnpay_ipn").permitAll()
+                                .requestMatchers("/api/v1/payments/create_payment").permitAll()
                                 .requestMatchers("/order/*/status").permitAll()
                                 .requestMatchers(HttpMethod.GET,"/api/v1/products/**").permitAll()
                                 .requestMatchers(HttpMethod.GET,"/api/v1/categories/**").permitAll()
+                                .requestMatchers(HttpMethod.POST,"/api/v1/users").permitAll()
+//                                .requestMatchers(HttpMethod.POST,"/api/momo/create").permitAll()
+//                                .requestMatchers(HttpMethod.GET,"/api/v1/orders").permitAll()
+//                                .requestMatchers(HttpMethod.GET,"/api/v1/orders/**").permitAll()
+//                                .requestMatchers(HttpMethod.GET,"/api/v1/roles/**").permitAll()
+                                .requestMatchers(HttpMethod.GET,"/api/v1/product_variants").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(customAuthenticationEntryPoint)
 
                 )
+
                 .formLogin(f -> f.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         return http.build();

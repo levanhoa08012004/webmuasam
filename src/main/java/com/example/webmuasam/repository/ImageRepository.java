@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ImageRepository extends JpaRepository<Images, Long>, JpaSpecificationExecutor<Images> {
     Page<Images> findAll(Specification<Images> spec, Pageable pageable);
-    boolean existsByBaseImage(String baseImage);
+    boolean existsByBaseImage(byte[] baseImage);
     void deleteAllByProduct(Product product);
 
 }

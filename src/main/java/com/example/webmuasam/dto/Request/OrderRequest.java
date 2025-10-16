@@ -17,6 +17,7 @@ public class OrderRequest {
     String phoneNumber;
     String email;
     String address;
+    String voucherCode;
     String ipAddress;
 
 }

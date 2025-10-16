@@ -18,11 +18,18 @@ public class Images {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
-    String baseImage;
+    @Lob
+    @Column(name = "base_image", columnDefinition = "LONGBLOB")
+    byte[] baseImage;
 
     @ManyToOne
     @JoinColumn(name="product_id")
     Product product;
+
+    @ManyToOne
+    @JoinColumn(name="review_id")
+    Review review;
+
     Instant createdAt;
     Instant updatedAt;
     String createdBy;

@@ -1,23 +1,32 @@
 package com.example.webmuasam.controller;
 
-import com.example.webmuasam.dto.Request.OrderRequest;
 import com.example.webmuasam.dto.Request.OrderRequestByCash;
-import com.example.webmuasam.dto.Response.OrderResponse;
+import com.example.webmuasam.dto.Response.DashboardResponse;
+import com.example.webmuasam.dto.Response.OrderResponseDetail;
 import com.example.webmuasam.dto.Response.ResultPaginationDTO;
 import com.example.webmuasam.entity.Order;
 import com.example.webmuasam.entity.User;
 import com.example.webmuasam.exception.AppException;
 import com.example.webmuasam.repository.UserRepository;
 import com.example.webmuasam.service.OrderService;
-import com.example.webmuasam.util.RequestUtil;
 import com.example.webmuasam.util.SecurityUtil;
-import jakarta.servlet.http.HttpServletRequest;
+import com.example.webmuasam.util.annotation.ApiMessage;
+import com.example.webmuasam.util.constant.StatusOrder;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -29,16 +38,9 @@ public class OrderController {
     private final OrderService orderService;
     private final UserRepository UserRepository;
 
-    @PostMapping
-    public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderRequest orderRequest, HttpServletRequest httpServletRequest)throws AppException {
-        var ipAddress = RequestUtil.getIpAddress(httpServletRequest);
-        orderRequest.setIpAddress(ipAddress);
-        log.info("[VNPay] IP Address: {}", orderRequest.getIpAddress());
 
-        return ResponseEntity.ok().body(this.orderService.checkoutWithVnPay(orderRequest));
-    }
     @PostMapping("/cash")
-    public ResponseEntity<Order> createOrderByCash(@Valid @RequestBody OrderRequestByCash orderRequest)throws AppException {
+    public ResponseEntity<OrderResponseDetail> createOrderByCash(@Valid @RequestBody OrderRequestByCash orderRequest)throws AppException {
         return ResponseEntity.ok().body(this.orderService.createOrderByCash(orderRequest));
     }
     @DeleteMapping("/{orderId}/cancel")
@@ -64,4 +66,48 @@ public class OrderController {
     public ResponseEntity<Order> getOrdersByIdStatus(@PathVariable Long id) throws AppException {
         return ResponseEntity.ok().body(this.orderService.getOrderStatus(id));
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponseDetail> getOrderById(@PathVariable Long id) throws AppException {
+        return ResponseEntity.ok().body(this.orderService.getOrderDetail(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<ResultPaginationDTO> getOrders(@RequestParam(required = false) String status,
+            Pageable pageable) {
+        return ResponseEntity.ok(this.orderService.getAllOrder(status, pageable));
+    }
+
+
+    @PutMapping("/status-admin")
+    public ResponseEntity<OrderResponseDetail> changeStatusOrder(@RequestParam Long orderId, @RequestParam StatusOrder status)throws AppException{
+        return ResponseEntity.ok().body(this.orderService.changeStatusOrder(orderId, status));
+    }
+
+    @PutMapping("/status")
+    public ResponseEntity<OrderResponseDetail> changeStatusOrderShipperAndUser(@RequestParam Long orderId, @RequestParam StatusOrder status)throws AppException{
+        return ResponseEntity.ok().body(this.orderService.changeStatusOrderShipperAndUser(orderId, status));
+    }
+
+
+    @GetMapping("/day")
+    public ResponseEntity<List<DashboardResponse>> getStatsByDay(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end
+    ) {
+        return ResponseEntity.ok(this.orderService.getStatsByDay(start, end));
+    }
+
+    /** Thống kê theo tháng: year */
+    @GetMapping("/month")
+    public ResponseEntity<List<DashboardResponse>> getStatsByMonth(@RequestParam int month,@RequestParam int year) {
+        return ResponseEntity.ok(this.orderService.getStatsByMonth(month,year));
+    }
+
+    /** Thống kê theo năm */
+    @GetMapping("/year")
+    public ResponseEntity<List<DashboardResponse>> getStatsByYear(@RequestParam int year) {
+        return ResponseEntity.ok(this.orderService.getStatsByYear(year));
+    }
+
 }

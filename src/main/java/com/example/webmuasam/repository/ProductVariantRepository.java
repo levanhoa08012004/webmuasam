@@ -20,6 +20,7 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     Page<ProductVariant> findAll(Specification<ProductVariant> spec, Pageable pageable);
     List<ProductVariant> findAllByProduct_Id(Long productId);
     boolean existsByProduct_IdAndSizeAndColor(Long productId, String size, String color);
+    ProductVariant findByProduct_IdAndSizeAndColor(Long productId, String size, String color);
     void deleteAllByProduct(Product product);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

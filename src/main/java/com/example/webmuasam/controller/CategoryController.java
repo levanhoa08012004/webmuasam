@@ -24,7 +24,6 @@ public class CategoryController {
     @PostMapping
     @ApiMessage("add category success")
     public ResponseEntity<Category> CreateCategory(@Valid @RequestBody Category category)throws AppException {
-
         return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createCategory(category));
     }
 

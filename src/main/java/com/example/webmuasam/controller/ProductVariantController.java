@@ -1,5 +1,6 @@
 package com.example.webmuasam.controller;
 
+import com.example.webmuasam.dto.Request.ProductVariantRequest;
 import com.example.webmuasam.dto.Response.ProductVariantResponse;
 import com.example.webmuasam.entity.ProductVariant;
 import com.example.webmuasam.exception.AppException;
@@ -25,6 +26,14 @@ public class ProductVariantController {
         return ResponseEntity.status(HttpStatus.CREATED).body(this.productVariantService.createProductVariant(id,productVariant));
     }
 
+    @GetMapping
+    @ApiMessage("Get Product Variant success")
+    public ResponseEntity<ProductVariantResponse> GetProductVariantByProductIdAndColorAndSize(@RequestParam Long productId,
+                                                                               @RequestParam String color,
+                                                                               @RequestParam String sizep) throws AppException
+    {
+        return ResponseEntity.ok(this.productVariantService.getVariant(productId, sizep, color));
+    }
     @GetMapping("/{id}")
     @ApiMessage("Get Product Variant success")
     public ResponseEntity<ProductVariantResponse> GetProductVariant(@PathVariable Long id) throws AppException {
@@ -37,10 +46,10 @@ public class ProductVariantController {
         return ResponseEntity.ok(this.productVariantService.getAllByProductID(id));
     }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @ApiMessage("Update Product Variant success")
-    public ResponseEntity<ProductVariant> UpdateProductVariant(@Valid @RequestBody ProductVariant productVariant) throws AppException {
-        return ResponseEntity.ok(this.productVariantService.updateProductVariant(productVariant));
+    public ResponseEntity<ProductVariantResponse> UpdateProductVariant(@Valid @PathVariable Long id, @RequestBody ProductVariantRequest productVariant) throws AppException {
+        return ResponseEntity.ok(this.productVariantService.updateProductVariant(id,productVariant));
     }
 
     @DeleteMapping("/{id}")

@@ -10,13 +10,17 @@ import com.example.webmuasam.entity.Role;
 import com.example.webmuasam.entity.User;
 import com.example.webmuasam.exception.AppException;
 import com.example.webmuasam.repository.*;
+import com.example.webmuasam.util.constant.GenderEnum;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -67,12 +71,17 @@ public class UserService {
     public CreateUserResponse convertToCreateUserResponse(User user){
         CreateUserResponse createUserResponse = new CreateUserResponse();
         CreateUserResponse.RoleUser roleUser = new CreateUserResponse.RoleUser();
+        createUserResponse.setId(user.getId());
         createUserResponse.setEmail(user.getEmail());
         createUserResponse.setUsername(user.getUsername());
         createUserResponse.setAddress(user.getAddress());
         createUserResponse.setGender(user.getGender());
         createUserResponse.setCreatedAt(user.getCreatedAt());
         createUserResponse.setCreatedBy(user.getCreatedBy());
+        if(user.getImage() != null) {
+            String imagebase = Base64.getEncoder().encodeToString(user.getImage());
+            createUserResponse.setImage(imagebase);
+        }
         if(user.getRole() != null){
             roleUser.setId(user.getRole().getId());
             roleUser.setName(user.getRole().getName());
@@ -90,6 +99,10 @@ public class UserService {
         updateUserResponse.setGender(user.getGender());
         updateUserResponse.setUpdatedAt(user.getUpdatedAt());
         updateUserResponse.setUpdatedBy(user.getUpdatedBy());
+        if(user.getImage() != null) {
+            String imagebase = Base64.getEncoder().encodeToString(user.getImage());
+            updateUserResponse.setImage(imagebase);
+        }
         if(user.getRole() != null){
             roleUser.setId(user.getRole().getId());
             roleUser.setName(user.getRole().getName());
@@ -98,15 +111,16 @@ public class UserService {
         return updateUserResponse;
     }
 
-    public UpdateUserResponse updateUser(User user) throws AppException {
-        User oldUser = this.userRepository.findById(user.getId()).orElseThrow(()-> new AppException("user not found"));
-            oldUser.setUsername(user.getUsername());
-            oldUser.setAddress(user.getAddress());
-            oldUser.setGender(user.getGender());
-            oldUser.setImage(user.getImage());
-
-            if(user.getRole() != null){
-                Role role = this.roleRepository.findById(user.getRole().getId()).get();
+    public UpdateUserResponse updateUser(Long id, String username, String address, GenderEnum gender, Long roleId,MultipartFile images) throws AppException, IOException {
+        User oldUser = this.userRepository.findById(id).orElseThrow(()-> new AppException("user not found"));
+            oldUser.setUsername(username);
+            oldUser.setAddress(address);
+            oldUser.setGender(gender);
+            if(images != null){
+                oldUser.setImage(images.getBytes());
+            }
+        Role role = this.roleRepository.findById(roleId).orElseThrow(()-> new AppException("role not found"));
+            if(role != null){
                 oldUser.setRole(role);
             }
             this.userRepository.save(oldUser);
@@ -138,7 +152,7 @@ public class UserService {
                 item.getEmail(),
                 item.getAddress(),
                 item.getGender(),
-                item.getImage(),
+                item.getImage() != null ? Base64.getEncoder().encodeToString(item.getImage()):null,
                 item.getCreatedAt(),
                 item.getUpdatedAt(),
                 item.getCreatedBy(),
@@ -181,6 +195,11 @@ public class UserService {
         return userRepository.findByEmail(email).orElseThrow(()->new AppException("user không tồn tại"));
     }
 
+
+    public void changePassword(User user, String newPassword) {
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 
     public void updateUserToken(String token,String email){
         User currentUser = null;

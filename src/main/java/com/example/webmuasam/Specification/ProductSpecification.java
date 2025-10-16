@@ -1,5 +1,6 @@
 package com.example.webmuasam.Specification;
 
+import com.example.webmuasam.entity.Category;
 import com.example.webmuasam.entity.Product;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -22,13 +23,15 @@ public class ProductSpecification {
         };
     }
 
-    public static Specification<Product> hasCategoryId(Long categoryId){
-        return(root,query,cb)->{
-            if(categoryId == null) return null;
-            Join<Object, Object> join = root.join("category", JoinType.INNER);
-            return cb.equal(root.get("categoryId"), categoryId);
+    public static Specification<Product> hasCategoryId(Long categoryId) {
+        return (root, query, cb) -> {
+            if (categoryId == null) return null;
+            Join<Product, Category> join = root.join("categories", JoinType.INNER);
+            return cb.equal(join.get("id"), categoryId);
         };
-
     }
 
+
 }
+
+

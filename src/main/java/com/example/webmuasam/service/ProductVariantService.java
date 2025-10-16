@@ -1,5 +1,6 @@
 package com.example.webmuasam.service;
 
+import com.example.webmuasam.dto.Request.ProductVariantRequest;
 import com.example.webmuasam.dto.Response.ProductVariantResponse;
 import com.example.webmuasam.entity.Product;
 import com.example.webmuasam.entity.ProductVariant;
@@ -20,14 +21,28 @@ public class ProductVariantService {
         this.productVariantRepository = productVariantRepository;
         this.productRepository = productRepository;
     }
-
+    @Transactional
     public ProductVariant createProductVariant(Long productId,ProductVariant productVariant) throws AppException {
         Product product = this.productRepository.findById(productId).orElseThrow(() -> new AppException("Product not found"));
         productVariant.setProduct(product);
         if(this.productVariantRepository.existsByProduct_IdAndSizeAndColor(productId,productVariant.getSize(), productVariant.getColor())) {
             throw new AppException("Product variant already exists");
         }
+        product.setQuantity(product.getQuantity()+productVariant.getStockQuantity());
+        productRepository.save(product);
         return this.productVariantRepository.save(productVariant);
+    }
+    public ProductVariantResponse getVariant(Long productId,String size,String color) throws AppException {
+        ProductVariant productVariant = this.productVariantRepository.findByProduct_IdAndSizeAndColor(productId,size,color);
+        if(productVariant != null) {
+            ProductVariantResponse productVariantResponse = new ProductVariantResponse();
+            productVariantResponse.setId(productVariant.getId());
+            productVariantResponse.setSize(productVariant.getSize());
+            productVariantResponse.setColor(productVariant.getColor());
+            productVariantResponse.setStockQuantity(productVariant.getStockQuantity());
+            return productVariantResponse;
+        }
+        return null;
     }
 
     public List<ProductVariantResponse> getAllByProductID(Long productId) throws AppException {
@@ -42,10 +57,10 @@ public class ProductVariantService {
             response.setColor(variant.getColor());
             response.setStockQuantity(variant.getStockQuantity());
 
-            ProductVariantResponse.Product product = new ProductVariantResponse.Product();
+            ProductVariantResponse.ProductResponse product = new ProductVariantResponse.ProductResponse();
             product.setProductId(variant.getProduct().getId());
             product.setProductName(variant.getProduct().getName());
-            response.setProduct(product);
+            response.setProductResponse(product);
             return response;
         }).collect(Collectors.toList());
 
@@ -58,21 +73,34 @@ public class ProductVariantService {
         response.setSize(productVariant.getSize());
         response.setColor(productVariant.getColor());
         response.setStockQuantity(productVariant.getStockQuantity());
-        ProductVariantResponse.Product product = new ProductVariantResponse.Product();
+        ProductVariantResponse.ProductResponse product = new ProductVariantResponse.ProductResponse();
         product.setProductId(productVariant.getProduct().getId());
         product.setProductName(productVariant.getProduct().getName());
-        response.setProduct(product);
+        response.setProductResponse(product);
         return response;
     }
 
-
-    public ProductVariant updateProductVariant(ProductVariant updated) throws AppException {
+    @Transactional
+    public ProductVariantResponse updateProductVariant(Long id, ProductVariantRequest updated) throws AppException {
         ProductVariant productVariant = this.productVariantRepository.findById(updated.getId()).orElseThrow(()->new AppException("ProductVariant không tồn tại")) ;
+        Product product = this.productRepository.findById(id).orElseThrow(()->new AppException("Product not found"));
+        product.setQuantity(product.getQuantity()-productVariant.getStockQuantity() + updated.getStockQuantity());
+        productRepository.save(product);
         productVariant.setColor(updated.getColor());
         productVariant.setSize(updated.getSize());
         productVariant.setStockQuantity(updated.getStockQuantity());
-        productVariant.setProduct(updated.getProduct());
-        return productVariantRepository.save(productVariant);
+
+        productVariantRepository.save(productVariant);
+        ProductVariantResponse response = new ProductVariantResponse();
+        response.setId(productVariant.getId());
+        response.setSize(productVariant.getSize());
+        response.setColor(productVariant.getColor());
+        response.setStockQuantity(productVariant.getStockQuantity());
+        ProductVariantResponse.ProductResponse productresponse =  new ProductVariantResponse.ProductResponse();
+        productresponse.setProductId(productVariant.getProduct().getId());
+        productresponse.setProductName(productVariant.getProduct().getName());
+        response.setProductResponse(productresponse);
+        return response;
     }
 
     public void deleteproductVariant(Long productVariantId) throws AppException {

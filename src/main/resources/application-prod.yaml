@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+jwt:
+  signerKey: ${JWT_SIGNERKEY}
+  valid-duration: 7200 #in second
+  refreshable-duration : 604800 #in seconds
+
+spring:
+  datasource:
+    url: ${DBMS_URL}
+    username: ${DBMS_USERNAME}
+    password: ${DBMS_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  mail:
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+
+momo:
+  access-key: ${MOMO_ACCESSKEY}
+  secret-key: ${MOMO_SECRETKEY}

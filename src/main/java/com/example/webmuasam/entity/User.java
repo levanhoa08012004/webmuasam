@@ -38,7 +38,10 @@ public class User {
     @Enumerated(EnumType.STRING)
     GenderEnum gender;
 
-    String image;
+
+    @Lob
+    @Column(columnDefinition = "LONGBLOB")
+    byte[] image;
 
     @Column(columnDefinition = "MEDIUMTEXT")
     String refreshToken;
@@ -61,6 +64,10 @@ public class User {
     @JsonIgnore
     List<Order> order;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    List<Review> reviews;
+
     @PrePersist
     public void handleBeforeCreate(){
         this.createdAt = Instant.now();
@@ -72,8 +79,6 @@ public class User {
         this.updatedAt = Instant.now();
         this.updatedBy = SecurityUtil.getCurrentUserLogin().isPresent() ? SecurityUtil.getCurrentUserLogin().get() : null;
     }
-
-
 
 
 }

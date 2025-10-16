@@ -5,9 +5,6 @@ server:
 
 spring:
   datasource:
-    url: "jdbc:mysql://localhost:3306/webmuasam"
-    username: root
-    password: 123456
     driver-class-name: "com.mysql.cj.jdbc.Driver"
   jpa:
     hibernate:
@@ -20,8 +17,6 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: hoalv1237890@gmail.com
-    password: aypncppjywqnhgbh
     properties:
       mail:
         smtp:
@@ -29,24 +24,22 @@ spring:
           starttls:
             enable: true
 
-
-  #upload file
-  servlet:
-    multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
-jwt:
-  signerKey: "S4/BDhmDFzk+cAEFxOJ7kt4kBnMCHKcs8Yco/jboh/IMBsTgj8PlMnq/spmBjh+N"
-  valid-duration: 8640000 #in second
-  refreshable-duration : 6840000 #in seconds
+#
+#  #upload file
+#  servlet:
+#    multipart:
+#      max-file-size: 50MB
+#      max-request-size: 50MB
+#jwt:
+#  valid-duration: 7200 #in second
+#  refreshable-duration : 604800 #in seconds
 
 example:
   base-uri: file:///D:/JAVA/upload/
 
-payment:
-  vnpay:
-    tmn-code: 02FQMDTI
-    secret-key: 0Y1VGU6SIFL36G2UDG6EAR271M79Q6ZP
-    init-payment-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-    return-url: https://29cb9322100f.ngrok-free.app/order/%s/status
-    timeout: 15 # in minutes
+momo:
+  partner-code : MOMO
+  return-url: http://localhost:3000/
+  end-point: https://test-payment.momo.vn/v2/gateway/api
+  ipn-url: http://localhost:8080/api/momo/ipn-handler
+  request-type: captureWallet

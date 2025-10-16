@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -36,11 +37,15 @@ public class RoleService {
         if(this.roleRepository.existsByName(role.getName())){
             throw new AppException("Role đã tồn tại");
         }
-        if(!role.getPermissions().isEmpty()){
-            List<Long> permissionIds = role.getPermissions().stream().map(x -> x.getId()).collect(Collectors.toList());
+        if(role.getPermissions() != null && !role.getPermissions().isEmpty()){
+            List<Long> permissionIds = role.getPermissions()
+                    .stream()
+                    .map(Permission::getId)
+                    .collect(Collectors.toList());
             List<Permission> dbPermissions = this.permissionRepository.findByIdIn(permissionIds);
             role.setPermissions(dbPermissions);
-
+        } else {
+            role.setPermissions(new ArrayList<>()); // đảm bảo không null
         }
         return this.roleRepository.save(role);
     }

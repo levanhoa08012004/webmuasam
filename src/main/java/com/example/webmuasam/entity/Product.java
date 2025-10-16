@@ -56,6 +56,9 @@ public class Product {
     )
     List<Category> categories;
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    List<Review> reviews;
 
 
 

@@ -45,6 +45,10 @@ public class Order {
     @JsonIgnore
     List<OrderDetail> orderDetails;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voucher_id")
+    Voucher voucher;
+
 
 
     Instant createdAt;

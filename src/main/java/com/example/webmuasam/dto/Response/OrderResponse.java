@@ -20,5 +20,4 @@ public class OrderResponse {
     String email;
     String address;
 
-    InitPaymentResponse initPaymentResponse;
 }

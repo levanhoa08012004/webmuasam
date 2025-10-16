@@ -14,4 +14,5 @@ public class OrderRequestByCash {
     String phoneNumber;
     String email;
     String address;
+    String voucherCode;
 }

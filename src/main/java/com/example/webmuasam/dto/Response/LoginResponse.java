@@ -1,7 +1,10 @@
 package com.example.webmuasam.dto.Response;
 
 import com.example.webmuasam.entity.Role;
+import com.example.webmuasam.util.constant.GenderEnum;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -23,6 +26,7 @@ public class LoginResponse {
         String email;
         String name;
         Role role;
+        String image;
     }
 
     @Getter
@@ -30,8 +34,9 @@ public class LoginResponse {
     @AllArgsConstructor
     @NoArgsConstructor
     @FieldDefaults(level = AccessLevel.PRIVATE)
-    public static class UserGetAccount{
-        UserLogin user;
+    public static class UserGetAccount extends UserLogin{
+        String address;
+        GenderEnum gender;
     }
 
     @Getter

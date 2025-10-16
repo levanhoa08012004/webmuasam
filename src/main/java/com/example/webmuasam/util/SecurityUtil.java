@@ -3,6 +3,7 @@ package com.example.webmuasam.util;
 
 import com.example.webmuasam.dto.Response.LoginResponse;
 import com.nimbusds.jose.util.Base64;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -18,6 +19,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class SecurityUtil {
     private final JwtEncoder jwtEncoder;
@@ -43,6 +45,7 @@ public class SecurityUtil {
 
     public String createAccessToken(String email, LoginResponse loginResponse) {
         LoginResponse.UserInsideToken userToken = new LoginResponse.UserInsideToken();
+
         userToken.setId(loginResponse.getUser().getId());
         userToken.setEmail(loginResponse.getUser().getEmail());
         userToken.setName(loginResponse.getUser().getName());
@@ -72,7 +75,7 @@ public class SecurityUtil {
         userToken.setName(loginRes.getUser().getName());
 
         Instant now = Instant.now();
-        Instant validity = now.plus(this.accessToken, ChronoUnit.SECONDS);
+        Instant validity = now.plus(this.refreshToken, ChronoUnit.SECONDS);
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuedAt(now)
