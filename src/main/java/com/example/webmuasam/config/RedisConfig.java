@@ -1,5 +1,6 @@
 package com.example.webmuasam.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
@@ -10,11 +11,17 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
 public class RedisConfig {
+    @Value("${spring.redis.host}")
+    String host;
+
+    @Value("${spring.redis.port}")
+    int port;
+
     @Bean
     public LettuceConnectionFactory redisConnection() {
         RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration();
-        configuration.setHostName("16.19.0.128");
-        configuration.setPort(6379);
+        configuration.setHostName(host);
+        configuration.setPort(port);
         //        configuration.setDatabase(0);
         //        configuration.setUsername();
         //        configuration.setPassword();
