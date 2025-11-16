@@ -6,7 +6,7 @@ services:
     container_name: mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: ${DBMS_PASSWORD:-root}
       MYSQL_DATABASE: webmuasam
     ports:
       - "3306:3306"
@@ -19,6 +19,8 @@ services:
     restart: always
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
 
   spring:
     build: .
@@ -30,18 +32,20 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DBMS_USERNAME: root
-      DBMS_PASSWORD: root
-      JWT_SIGNERKEY: supersecretkey
-      MAIL_USERNAME: yourmail@gmail.com
-      MAIL_PASSWORD: yourpass
-      UPLOAD_DIR: file:///app/upload/
-      MOMO_ACCESSKEY: xxxxx
-      MOMO_SECRETKEY: yyyyy
-      MOMO_IPN_URL: http://SERVER_IP:8080/api/momo/ipn-handler
-      MOMO_RETURN_URL: http://FRONTEND_DOMAIN/
+      DBMS_USERNAME: ${DBMS_USERNAME:-root}
+      DBMS_PASSWORD: ${DBMS_PASSWORD:-root}
+      JWT_SIGNERKEY: ${JWT_SIGNERKEY:-supersecretkey}
+      MAIL_USERNAME: ${MAIL_USERNAME:-youremail@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-yourmailpass}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      UPLOAD_DIR: /app/upload/
+      MOMO_ACCESSKEY: ${MOMO_ACCESSKEY:-xxxxx}
+      MOMO_SECRETKEY: ${MOMO_SECRETKEY:-yyyyy}
+      MOMO_IPN_URL: ${MOMO_IPN_URL:-http://backend.yourdomain.com:8080/api/momo/ipn-handler}
+      MOMO_RETURN_URL: ${MOMO_RETURN_URL:-http://frontend.yourdomain.com/}
     volumes:
-      - upload_data:/app/upload/
+      - /home/ubuntu/upload:/app/upload/
 
 volumes:
   mysql_data:
