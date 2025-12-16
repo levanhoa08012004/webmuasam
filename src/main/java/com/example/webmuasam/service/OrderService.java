@@ -4,8 +4,12 @@ import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.example.webmuasam.exception.ResourceNotFoundException;
 import jakarta.annotation.PostConstruct;
 
+import jakarta.persistence.PersistenceException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -14,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.webmuasam.Specification.OrderSpecfication;
-import com.example.webmuasam.dto.Request.CartItemDTO;
+import com.example.webmuasam.dto.Request.CartItemRequest;
 import com.example.webmuasam.dto.Request.OrderRequest;
 import com.example.webmuasam.dto.Request.OrderRequestByCash;
 import com.example.webmuasam.dto.Response.DashboardResponse;
@@ -28,103 +32,97 @@ import com.example.webmuasam.util.SecurityUtil;
 import com.example.webmuasam.util.constant.PaymentMethod;
 import com.example.webmuasam.util.constant.StatusOrder;
 
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
-@Builder
 @Slf4j
+@RequiredArgsConstructor
 public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductVariantRepository productVariantRepository;
     private final OrderDetailRepository orderDetailRepository;
     private final CartRepository cartRepository;
-    private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
     private final CartService cartService;
     private final VoucherRepository voucherRepository;
     private final VoucherService voucherService;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    public OrderService(
-            OrderRepository orderRepository,
-            ProductVariantRepository productVariantRepository,
-            OrderDetailRepository orderDetailRepository,
-            CartRepository cartRepository,
-            CartItemRepository cartItemRepository,
-            UserRepository userRepository,
-            CartService cartService,
-            VoucherRepository voucherRepository,
-            VoucherService voucherService,
-            RedisTemplate<String, Object> redisTemplate) {
-        this.orderRepository = orderRepository;
-        this.productVariantRepository = productVariantRepository;
-        this.orderDetailRepository = orderDetailRepository;
-        this.cartRepository = cartRepository;
-        this.cartItemRepository = cartItemRepository;
-        this.userRepository = userRepository;
-        this.cartService = cartService;
-        this.voucherRepository = voucherRepository;
-        this.voucherService = voucherService;
-        this.redisTemplate = redisTemplate;
-    }
 
     @PostConstruct
     public void initStockToRedis() {
-        List<ProductVariant> productVariants = productVariantRepository.findAll();
+        log.info("Initializing product stock to Redis...");
+
+        List<ProductVariant> productVariants;
+
+        try {
+            productVariants = productVariantRepository.findAll();
+        } catch (Exception e) {
+            log.error("Cannot load product variants from database", e);
+            return;
+        }
 
         for (ProductVariant productVariant : productVariants) {
             String key = "stock:" + productVariant.getId();
 
-            // Xoá key cũ nếu tồn tại hoặc kiểm tra kiểu dữ liệu
-            Object value = redisTemplate.opsForValue().get(key);
-            boolean needSet = false;
+            try {
+                Object value = redisTemplate.opsForValue(). get(key);
 
-            if (value == null) {
-                needSet = true; // key chưa tồn tại
-            } else {
-                try {
-                    // Kiểm tra xem giá trị có parse được thành long không
-                    Long.parseLong(value.toString());
-                } catch (NumberFormatException e) {
-                    needSet = true; // giá trị hiện tại không phải số -> cần set lại
+                boolean needSet = false;
+
+                if (value == null) {
+                    needSet = true; // key chưa tồn tại
+                } else {
+                    try {
+                        Long.parseLong(value.toString());
+                    } catch (NumberFormatException e) {
+                        needSet = true; // giá trị sai kiểu
+                    }
                 }
-            }
 
-            if (needSet) {
-                redisTemplate.opsForValue().set(key, (long) productVariant.getStockQuantity());
+                if (needSet) {
+                    redisTemplate.opsForValue()
+                            .set(key, (long) productVariant.getStockQuantity());
+
+                    log.debug("Set stock for key {} = {}", key, productVariant.getStockQuantity());
+                }
+
+            } catch (DataAccessException e) {
+                log.warn("Redis error for key {}. Skip initializing this stock", key, e);
             }
         }
+
+        log.info("Redis stock initialization completed");
     }
 
     @Transactional
     public OrderResponseDetail createOrderByCash(OrderRequestByCash orderRequest) throws AppException {
-        String email = SecurityUtil.getCurrentUserLogin().orElseThrow(() -> new AppException("Token không hợp lệ"));
+        String email = SecurityUtil.getCurrentUserLogin().orElseThrow(() -> new AppException("Invalid token"));
 
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new AppException("Email không tồn tại"));
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new AppException("Email not found"));
 
         Cart cart = cartRepository
                 .findByUserIdForUpdate(user.getId())
-                .orElseThrow(() -> new AppException("Không tìm thấy giỏ hàng"));
+                .orElseThrow(() -> new AppException("cart not found"));
 
-        List<CartItemDTO> items = cart.getCartItems().stream()
-                .map(ci -> new CartItemDTO(ci.getProductVariant().getId(), ci.getQuantity()))
+        List<CartItemRequest> items = cart.getCartItems().stream()
+                .map(ci -> new CartItemRequest(ci.getProductVariant().getId(), ci.getQuantity()))
                 .collect(Collectors.toList());
         if (items.isEmpty()) {
-            throw new AppException("Giỏ hàng đang trống");
+            throw new AppException("cart is empty");
         }
         List<Long> variants =
-                items.stream().map(CartItemDTO::getVariantId).distinct().toList();
+                items.stream().map(CartItemRequest::getVariantId).distinct().toList();
         Map<Long, ProductVariant> variantMap = this.productVariantRepository.findAllById(variants).stream()
                 .collect(Collectors.toMap(ProductVariant::getId, v -> v));
 
         Map<String, Integer> decrementStock = new HashMap<>();
         try {
-            for (CartItemDTO cartItemDTO : items) {
+            for (CartItemRequest cartItemDTO : items) {
                 String key = "stock:" + cartItemDTO.getVariantId();
                 ProductVariant variant = variantMap.get(cartItemDTO.getVariantId());
                 if (variant == null) {
-                    throw new AppException("Sản phẩm không tồn tại: " + cartItemDTO.getVariantId());
+                    throw new AppException("The product does not exist: " + cartItemDTO.getVariantId());
                 }
                 if (!redisTemplate.hasKey(key)) {
                     redisTemplate.opsForValue().set(key, (long) (variant.getStockQuantity()), Duration.ofDays(7));
@@ -136,7 +134,7 @@ public class OrderService {
                         redisTemplate.opsForValue().increment(entry.getKey(), entry.getValue());
                     }
                     redisTemplate.opsForValue().increment(key, cartItemDTO.getQuantity());
-                    throw new AppException("Sản phẩm " + cartItemDTO.getVariantId() + " không đủ hàng");
+                    throw new AppException("product" + cartItemDTO.getVariantId() + " Insufficient stock");
                 }
                 decrementStock.put(key, (int) cartItemDTO.getQuantity());
             }
@@ -178,7 +176,7 @@ public class OrderService {
 
             // Tạo OrderDetail và trừ tồn kho
             List<OrderDetail> orderDetails = new ArrayList<>();
-            for (CartItemDTO item : items) {
+            for (CartItemRequest item : items) {
                 ProductVariant variant = variantMap.get(item.getVariantId());
                 Object stockObj = redisTemplate.opsForValue().get("stock:" + item.getVariantId());
                 if (stockObj != null) {
@@ -201,7 +199,7 @@ public class OrderService {
             // Xóa giỏ hàng
             cartService.clearCartByUserId(user.getId());
 
-            log.info("Tạo đơn hàng thành công: orderId={}, user={}", order.getId(), user.getEmail());
+            log.info("Order successfully created: orderId={}, user={}", order.getId(), user.getEmail());
             return convertOrderToOrderResponseDetail(order);
         } catch (Exception e) {
             for (Map.Entry<String, Integer> entry : decrementStock.entrySet()) {
@@ -215,16 +213,16 @@ public class OrderService {
     public OrderResponse checkoutWithVnPay(OrderRequest orderRequest) throws AppException {
         // 1. Lấy user hiện tại từ token (qua email)
         String email =
-                SecurityUtil.getCurrentUserLogin().orElseThrow(() -> new AppException("Không thể xác thực người dùng"));
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new AppException("Không tìm thấy người dùng"));
+                SecurityUtil.getCurrentUserLogin().orElseThrow(() -> new PersistenceException("Unable to authenticate user"));
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("user not found"));
 
         // 2. Lấy giỏ hàng
         Cart cart = cartRepository
                 .findByUserIdForUpdate(user.getId())
-                .orElseThrow(() -> new AppException("Không tìm thấy giỏ hàng"));
+                .orElseThrow(() -> new AppException("cart not found"));
         List<CartItem> cartItems = new ArrayList<>(cart.getCartItems()); // <-- Quan trọng!
         if (cartItems.isEmpty()) {
-            throw new AppException("Giỏ hàng trống");
+            throw new AppException("cart is empty");
         }
 
         // 3. Lock các biến thể sản phẩm
@@ -237,7 +235,7 @@ public class OrderService {
             ProductVariant variant =
                     findVariant(variants, item.getProductVariant().getId());
             if (variant.getStockQuantity() < item.getQuantity()) {
-                throw new AppException("Sản phẩm " + variant.getProduct().getName() + " không đủ số lượng");
+                throw new AppException("product " + variant.getProduct().getName() + " insufficient quantity");
             }
         }
 
@@ -246,7 +244,6 @@ public class OrderService {
                 .mapToDouble(item -> item.getProductVariant().getProduct().getPrice() * item.getQuantity())
                 .sum();
 
-        // 6. Tạo đơn hàng (chưa trừ tồn kho vội)
         Order order = new Order();
 
         if (orderRequest.getVoucherCode() != null
@@ -267,7 +264,7 @@ public class OrderService {
             total = 0;
         }
         order.setUser(user);
-        order.setStatus(StatusOrder.PENDING); // chờ thanh toán
+        order.setStatus(StatusOrder.PENDING);
         order.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
         order.setPhoneNumber(orderRequest.getPhoneNumber());
         order.setEmail(orderRequest.getEmail());
@@ -276,7 +273,6 @@ public class OrderService {
         order.setTotal_price(total);
         orderRepository.save(order);
 
-        // 7. Tạo danh sách OrderDetail
         List<OrderDetail> orderDetails = cartItems.stream()
                 .map(item -> {
                     ProductVariant variant = null;
@@ -296,7 +292,6 @@ public class OrderService {
                 .toList();
         orderDetailRepository.saveAll(orderDetails);
 
-        // 9. Trả về OrderResponse (FE dùng redirect đến VNPay)
         return new OrderResponse(
                 order.getId(),
                 order.getTotal_price(),
@@ -311,58 +306,34 @@ public class OrderService {
         return list.stream()
                 .filter(pv -> pv.getId().equals(id))
                 .findFirst()
-                .orElseThrow(() -> new AppException("Không tìm thấy biến thể sản phẩm"));
+                .orElseThrow(() -> new AppException("product variants not found."));
     }
 
-    //    @Scheduled(fixedRate = 60000) // mỗi 1 phút
-    //    @Transactional
-    //    public void cancelOrder() {
-    //        Instant now = Instant.now();
-    //
-    //        List<Order> orders = orderRepository.findByStatusAndCreatedAtBefore(
-    //                StatusOrder.PENDING.toString(),
-    //                now.minusSeconds(900) // timeout 15 phút
-    //        );
-    //
-    //        for (Order order : orders) {
-    //            order.setStatus(StatusOrder.CANCELLED);
-    //
-    //            // Nếu có voucher thì hoàn lại
-    //            if (order.getVoucher() != null) {
-    //                Voucher voucher = order.getVoucher();
-    //                if (voucher.getUsedCount() > 0) {
-    //                    voucher.setUsedCount(voucher.getUsedCount() - 1);
-    //                    voucherRepository.save(voucher);
-    //                }
-    //            }
-    //        }
-    //    }
 
     @Transactional
     public void cancelOrder(Long userId, Long orderId) throws AppException {
         Order order = orderRepository
                 .findByIdAndUserId(orderId, userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+                .orElseThrow(() -> new ResourceNotFoundException("order not found"));
 
         if (order.getStatus() != StatusOrder.PENDING) {
-            throw new RuntimeException("Chỉ có thể hủy đơn hàng đang chờ thanh toán");
+            throw new RuntimeException("Only orders that are pending payment can be canceled");
         }
 
         if (order.getVoucher() != null) {
             Voucher voucher = this.voucherRepository
                     .findById(order.getVoucher().getId())
-                    .orElseThrow(() -> new AppException("Không tìm thấy voucher"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Voucher not found"));
             voucher.setUsedCount(order.getVoucher().getUsedCount() - 1);
             voucherRepository.save(voucher);
         }
-        // Xóa đơn hàng và chi tiết
         orderDetailRepository.deleteByOrderId(orderId);
         orderRepository.delete(order);
     }
 
     @Transactional
     public void confirmVnPayPayment(long txnRef, boolean success) throws AppException {
-        Order order = orderRepository.findById(txnRef).orElseThrow(() -> new AppException("Không tìm thấy đơn hàng"));
+        Order order = orderRepository.findById(txnRef).orElseThrow(() -> new ResourceNotFoundException("order not found."));
 
         if (!order.getStatus().equals(StatusOrder.PENDING)) return;
 
@@ -405,7 +376,7 @@ public class OrderService {
 
     public Order getOrderStatus(Long orderId) throws AppException {
         Order order;
-        order = this.orderRepository.findById(orderId).orElseThrow(() -> new AppException("order khong ton tai"));
+        order = this.orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("The order does not exist."));
         return order;
     }
 
@@ -490,12 +461,12 @@ public class OrderService {
     }
 
     public OrderResponseDetail getOrderDetail(Long orderId) throws AppException {
-        Order order = this.orderRepository.findById(orderId).orElseThrow(() -> new AppException("order khong ton tai"));
+        Order order = this.orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("The order does not exist."));
         return convertOrderToOrderResponseDetail(order);
     }
 
     public OrderResponseDetail changeStatusOrder(Long orderId, StatusOrder status) throws AppException {
-        Order order = this.orderRepository.findById(orderId).orElseThrow(() -> new AppException("order khong ton tai"));
+        Order order = this.orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("The order does not exist"));
         if (status.equals(order.getStatus())) {
             throw new AppException("Trùng status");
         } else {
@@ -506,9 +477,9 @@ public class OrderService {
     }
 
     public OrderResponseDetail changeStatusOrderShipperAndUser(Long orderId, StatusOrder status) throws AppException {
-        Order order = this.orderRepository.findById(orderId).orElseThrow(() -> new AppException("order khong ton tai"));
+        Order order = this.orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("The order does not exist"));
         if (status.equals(order.getStatus())) {
-            throw new AppException("Trùng status");
+            throw new AppException("Duplicate status");
         } else {
             if (status.equals(StatusOrder.COMPLETED)
                     || status.equals(StatusOrder.SHIPPING)
@@ -517,102 +488,26 @@ public class OrderService {
                 order.setStatus(status);
                 this.orderRepository.save(order);
             } else {
-                throw new AppException("Bạn không có quyền sửa trạng thái này");
+                throw new AppException("You do not have permission to edit this status");
             }
         }
         return convertOrderToOrderResponseDetail(order);
     }
 
     public List<DashboardResponse> getStatsByDay(Instant start, Instant end) {
-        List<Order> orders = orderRepository.findAll(OrderSpecfication.createdAtBetween(start, end));
-
-        return orders.stream()
-                .collect(Collectors.groupingBy(
-                        o -> o.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate(),
-                        Collectors.collectingAndThen(Collectors.toList(), list -> {
-                            LocalDate date = list.get(0)
-                                    .getCreatedAt()
-                                    .atZone(ZoneId.systemDefault())
-                                    .toLocalDate();
-                            long userCount = list.stream()
-                                    .map(o -> o.getUser().getId())
-                                    .distinct()
-                                    .count();
-                            long orderCount = list.size();
-                            double revenue = list.stream()
-                                    .mapToDouble(Order::getTotal_price)
-                                    .sum();
-                            return new DashboardResponse(date.toString(), userCount, orderCount, revenue);
-                        })))
-                .values()
-                .stream()
-                .sorted((a, b) -> a.getLabel().compareTo(b.getLabel()))
-                .collect(Collectors.toList());
+        return orderRepository.statsByDay(start, end);
     }
 
-    /** Lọc thống kê theo tháng (tháng + năm) */
     public List<DashboardResponse> getStatsByMonth(int month, int year) {
-        // Tạo ngày bắt đầu và kết thúc của tháng
-        LocalDate startDate = LocalDate.of(year, month, 1);
-        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
-
-        Instant start = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant end = endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
-
-        // Lọc đơn hàng trong tháng đó
-        List<Order> orders = orderRepository.findAll(OrderSpecfication.createdAtBetween(start, end));
-
-        // Gom nhóm theo từng ngày có đơn hàng
-        return orders.stream()
-                .collect(Collectors.groupingBy(
-                        o -> o.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate(),
-                        Collectors.collectingAndThen(Collectors.toList(), list -> {
-                            LocalDate date = list.get(0)
-                                    .getCreatedAt()
-                                    .atZone(ZoneId.systemDefault())
-                                    .toLocalDate();
-                            long userCount = list.stream()
-                                    .map(o -> o.getUser().getId())
-                                    .distinct()
-                                    .count();
-                            long orderCount = list.size();
-                            double revenue = list.stream()
-                                    .mapToDouble(Order::getTotal_price)
-                                    .sum();
-                            return new DashboardResponse(date.toString(), userCount, orderCount, revenue);
-                        })))
-                .values()
-                .stream()
-                .sorted(Comparator.comparing(DashboardResponse::getLabel)) // Sắp xếp theo ngày
-                .collect(Collectors.toList());
+        return orderRepository.statsByDayInMonth(month, year);
     }
 
-    /** Lọc thống kê theo năm */
     public List<DashboardResponse> getStatsByYear(int year) {
-        List<Order> orders = orderRepository.findAll(OrderSpecfication.createdAtYear(year));
+        return orderRepository.statsByMonth(year);
+    }
 
-        return orders.stream()
-                .collect(Collectors.groupingBy(
-                        o -> YearMonth.from(
-                                o.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate()),
-                        Collectors.collectingAndThen(Collectors.toList(), list -> {
-                            YearMonth ym = YearMonth.from(list.get(0)
-                                    .getCreatedAt()
-                                    .atZone(ZoneId.systemDefault())
-                                    .toLocalDate());
-                            long userCount = list.stream()
-                                    .map(o -> o.getUser().getId())
-                                    .distinct()
-                                    .count();
-                            long orderCount = list.size();
-                            double revenue = list.stream()
-                                    .mapToDouble(Order::getTotal_price)
-                                    .sum();
-                            return new DashboardResponse(ym.toString(), userCount, orderCount, revenue);
-                        })))
-                .values()
-                .stream()
-                .sorted((a, b) -> a.getLabel().compareTo(b.getLabel()))
-                .collect(Collectors.toList());
+
+    public DashboardResponse getTotalStats(Instant start, Instant end) {
+        return orderRepository.totalStats(start, end);
     }
 }

@@ -11,10 +11,10 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
 public class RedisConfig {
-    @Value("${spring.redis.host}")
+    @Value("${spring.data.redis.host}")
     String host;
 
-    @Value("${spring.redis.port}")
+    @Value("${spring.data.redis.port}")
     int port;
 
     @Bean
@@ -34,12 +34,13 @@ public class RedisConfig {
         template.setConnectionFactory(redisConnection);
 
         template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new Jackson2JsonRedisSerializer<Object>(Object.class));
-
         template.setHashKeySerializer(new StringRedisSerializer());
+
+        template.setValueSerializer(new Jackson2JsonRedisSerializer<>(Object.class));
         template.setHashValueSerializer(new Jackson2JsonRedisSerializer<>(Object.class));
 
         template.afterPropertiesSet();
         return template;
     }
+
 }

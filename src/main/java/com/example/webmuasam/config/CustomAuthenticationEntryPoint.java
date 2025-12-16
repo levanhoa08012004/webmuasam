@@ -12,7 +12,7 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthen
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
-import com.example.webmuasam.entity.ApiResponse;
+import com.example.webmuasam.dto.Response.ApiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component

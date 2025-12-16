@@ -12,7 +12,7 @@ import org.springframework.http.server.ServletServerHttpResponse;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
-import com.example.webmuasam.entity.ApiResponse;
+import com.example.webmuasam.dto.Response.ApiResponse;
 import com.example.webmuasam.util.annotation.ApiMessage;
 
 @RestControllerAdvice
@@ -35,7 +35,7 @@ public class FormatApiResponse implements ResponseBodyAdvice<Object> {
         int status = httpResponse.getStatus();
         ApiResponse<Object> apiResponse = new ApiResponse<Object>();
         apiResponse.setStatusCode(status);
-        if (body instanceof String || body instanceof Resource) {
+        if (body instanceof String || body instanceof Resource || body instanceof ApiResponse) {
             return body;
         }
         String path = request.getURI().getPath();

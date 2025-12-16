@@ -223,10 +223,10 @@ public class AuthController {
                 ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
         User user = this.userService.handleGetUserByUserName(email);
-        if (!passwordEncoder.matches(request.getOldPassWord(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new AppException("Mật khẩu không chính xác");
         }
-        this.userService.changePassword(user, request.getNewPassWord());
+        this.userService.changePassword(user, request.getNewPassword());
         return ResponseEntity.ok().body("Đổi mật khẩu thành công");
     }
 

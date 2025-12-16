@@ -2,23 +2,17 @@ package com.example.webmuasam.dto.Request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CreateCartItemRequest {
-    @NotNull(message = "Cart id is required")
-    @Positive(message = "Cart id must be positive")
-    Long cartId;
-
+public class CartItemRequest {
     @NotNull(message = "Variant id is required")
-    @Positive(message = "Variant id must be positive")
     Long variantId;
 
     @NotNull(message = "Quantity is required")

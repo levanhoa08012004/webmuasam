@@ -1,8 +1,11 @@
 package com.example.webmuasam.controller;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
+import com.example.webmuasam.exception.ResourceNotFoundException;
 import jakarta.validation.Valid;
 
 import org.springframework.data.domain.Pageable;
@@ -43,8 +46,8 @@ public class OrderController {
     @DeleteMapping("/{orderId}/cancel")
     public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) throws AppException {
         String email = SecurityUtil.getCurrentUserLogin()
-                .orElseThrow(() -> new AppException("Không xác thực được người dùng"));
-        User user = this.UserRepository.findByEmail(email).orElseThrow(() -> new AppException("user not found"));
+                .orElseThrow(() -> new AppException("User authentication failed"));
+        User user = this.UserRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("user not found"));
         orderService.cancelOrder(user.getId(), orderId);
         return ResponseEntity.ok().build();
     }
@@ -52,8 +55,8 @@ public class OrderController {
     @GetMapping("/user")
     public ResponseEntity<ResultPaginationDTO> getOrdersByCurrentUser(Pageable pageable) throws AppException {
         String email = SecurityUtil.getCurrentUserLogin()
-                .orElseThrow(() -> new AppException("Không xác thực được người dùng"));
-        User user = this.UserRepository.findByEmail(email).orElseThrow(() -> new AppException("user not found"));
+                .orElseThrow(() -> new AppException("User authentication failed"));
+        User user = this.UserRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("user not found"));
         ResultPaginationDTO response = orderService.getAllOrderByUser(user.getId(), pageable);
         return ResponseEntity.ok(response);
     }
@@ -88,18 +91,28 @@ public class OrderController {
 
     @GetMapping("/day")
     public ResponseEntity<List<DashboardResponse>> getStatsByDay(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end) {
-        return ResponseEntity.ok(this.orderService.getStatsByDay(start, end));
+            @RequestParam  String start,
+            @RequestParam String end) {
+        ZoneId zone = ZoneId.systemDefault();
+
+        Instant startInstant = LocalDate.parse(start)
+                .atStartOfDay(zone)
+                .toInstant();
+
+        Instant endInstant = LocalDate.parse(end)
+                .plusDays(1)
+                .atStartOfDay(zone)
+                .toInstant();
+
+
+        return ResponseEntity.ok(this.orderService.getStatsByDay(startInstant, endInstant));
     }
 
-    /** Thống kê theo tháng: year */
     @GetMapping("/month")
     public ResponseEntity<List<DashboardResponse>> getStatsByMonth(@RequestParam int month, @RequestParam int year) {
         return ResponseEntity.ok(this.orderService.getStatsByMonth(month, year));
     }
 
-    /** Thống kê theo năm */
     @GetMapping("/year")
     public ResponseEntity<List<DashboardResponse>> getStatsByYear(@RequestParam int year) {
         return ResponseEntity.ok(this.orderService.getStatsByYear(year));

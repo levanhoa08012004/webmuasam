@@ -1,4 +1,4 @@
-package com.example.webmuasam.entity;
+package com.example.webmuasam.dto.Response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -11,9 +11,10 @@ import lombok.experimental.FieldDefaults;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class ApiResponse<T> {
     int statusCode;
     String error;
-    Object message;
+    String message;
     T data;
 }

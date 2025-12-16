@@ -8,7 +8,8 @@ jwt:
 
 spring:
   datasource:
-    url: jdbc:mysql://mysql:3306/webmuasam
+#    url: jdbc:mysql://mysql:3306/webmuasam
+    url: jdbc:mysql://localhost:3306/webmuasam
     #    url: jdbc:mysql://16.19.0.128:3306/webmuasam
     username: ${DBMS_USERNAME}
     password: ${DBMS_PASSWORD}

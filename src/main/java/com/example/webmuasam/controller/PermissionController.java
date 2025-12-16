@@ -2,6 +2,7 @@ package com.example.webmuasam.controller;
 
 import jakarta.validation.Valid;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -17,12 +18,9 @@ import com.turkraft.springfilter.boot.Filter;
 
 @RestController
 @RequestMapping("/api/v1/permissions")
+@RequiredArgsConstructor
 public class PermissionController {
     private final PermissionService permissionService;
-
-    public PermissionController(PermissionService permissionService) {
-        this.permissionService = permissionService;
-    }
 
     @PostMapping
     @ApiMessage("create permission success")

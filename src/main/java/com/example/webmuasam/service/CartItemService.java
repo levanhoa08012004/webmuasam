@@ -3,9 +3,6 @@ package com.example.webmuasam.service;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.example.webmuasam.dto.Request.CreateCartItemRequest;
 import com.example.webmuasam.dto.Response.CartItemResponse;
 import com.example.webmuasam.entity.Cart;
@@ -16,142 +13,133 @@ import com.example.webmuasam.exception.AppException;
 import com.example.webmuasam.repository.CartItemRepository;
 import com.example.webmuasam.repository.CartRepository;
 import com.example.webmuasam.repository.ProductVariantRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class CartItemService {
+
     private final CartItemRepository cartItemRepository;
     private final CartRepository cartRepository;
     private final ProductVariantRepository productVariantRepository;
 
-    public CartItemService(
-            CartItemRepository cartItemRepository,
-            CartRepository cartRepository,
-            ProductVariantRepository productVariantRepository) {
-        this.cartItemRepository = cartItemRepository;
-        this.cartRepository = cartRepository;
-        this.productVariantRepository = productVariantRepository;
-    }
 
-    public CartItemResponse convertToResponse(CartItem cartItem) {
+
+    private CartItemResponse convertToResponse(CartItem cartItem) {
+        ProductVariant variant = cartItem.getProductVariant();
+        Product product = variant.getProduct();
+
+        CartItemResponse.ProductInfo productInfo =
+                new CartItemResponse.ProductInfo(product.getId(), product.getName(), product.getPrice());
+
+        CartItemResponse.ProductVariantInfo variantInfo =
+                new CartItemResponse.ProductVariantInfo(variant.getId(), variant.getColor(), variant.getSize(), productInfo);
+
         CartItemResponse response = new CartItemResponse();
         response.setId(cartItem.getId());
         response.setQuantity(cartItem.getQuantity());
         response.setPrice(cartItem.getPrice());
-
-        ProductVariant pv = cartItem.getProductVariant();
-        Product p = pv.getProduct();
-
-        CartItemResponse.ProductInfo productInfo =
-                new CartItemResponse.ProductInfo(p.getId(), p.getName(), p.getPrice());
-        CartItemResponse.ProductVariantInfo variantInfo =
-                new CartItemResponse.ProductVariantInfo(pv.getId(), pv.getColor(), pv.getSize(), productInfo);
-
         response.setProductVariant(variantInfo);
 
         return response;
     }
 
-    @Transactional(rollbackFor = {AppException.class})
+    @Transactional(rollbackFor = AppException.class)
     public CartItemResponse addCartItem(CreateCartItemRequest request) throws AppException {
-        Cart cart = this.cartRepository
-                .findById(request.getCartId())
-                .orElseThrow(() -> new AppException("cart không tồn tại"));
-        ProductVariant productVariant = this.productVariantRepository
-                .findById(request.getVariantId())
-                .orElseThrow(() -> new AppException("variant không tồn tại"));
+        Cart cart = cartRepository.findById(request.getCartId())
+                .orElseThrow(() -> new AppException("Cart does not exist"));
+        ProductVariant variant = productVariantRepository.findById(request.getVariantId())
+                .orElseThrow(() -> new AppException("Product variant does not exist"));
 
-        Optional<CartItem> optionalCartItem = this.cartItemRepository.findByCartAndProductVariant(cart, productVariant);
+        Optional<CartItem> existingItem = cartItemRepository.findByCartAndProductVariant(cart, variant);
         CartItem cartItem;
-        if (optionalCartItem.isPresent()) {
-            cartItem = optionalCartItem.get();
-            int newQuantity = request.getQuantity() + cartItem.getQuantity();
-            if (newQuantity > productVariant.getStockQuantity()) {
-                throw new AppException(
-                        "Số lượng sản phẩm hiện tại không đủ, chỉ còn " + productVariant.getStockQuantity());
+
+        if (existingItem.isPresent()) {
+            cartItem = existingItem.get();
+            int newQuantity = cartItem.getQuantity() + request.getQuantity();
+            if (newQuantity > variant.getStockQuantity()) {
+                throw new AppException("Not enough stock. Only " + variant.getStockQuantity() + " left.");
             }
             cartItem.setQuantity(newQuantity);
-            cartItem.setPrice(productVariant.getProduct().getPrice());
         } else {
-
+            if (request.getQuantity() > variant.getStockQuantity()) {
+                throw new AppException("Not enough stock. Only " + variant.getStockQuantity() + " left.");
+            }
             cartItem = new CartItem();
             cartItem.setCart(cart);
-            cartItem.setProductVariant(productVariant);
-            if (request.getQuantity() > productVariant.getStockQuantity()) {
-                throw new AppException(
-                        "Số lượng sản phẩm hiện tại không đủ, chỉ còn " + productVariant.getStockQuantity());
-            }
+            cartItem.setProductVariant(variant);
             cartItem.setQuantity(request.getQuantity());
-            cartItem.setPrice(productVariant.getProduct().getPrice());
         }
 
-        CartItem cartItemResponse = this.cartItemRepository.save(cartItem);
-        return convertToResponse(cartItemResponse);
+        cartItem.setPrice(variant.getProduct().getPrice() * cartItem.getQuantity());
+        return convertToResponse(cartItemRepository.save(cartItem));
     }
 
-    public CartItemResponse increCartItem(Long cartItemId) throws AppException {
-        CartItem cartItem = this.cartItemRepository
-                .findById(cartItemId)
-                .orElseThrow(() -> new AppException("cartItem không tồn tại"));
+    public CartItemResponse incrementCartItem(Long cartItemId) throws AppException {
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new AppException("Cart item does not exist"));
         int newQuantity = cartItem.getQuantity() + 1;
-        if (newQuantity > cartItem.getProductVariant().getStockQuantity()) {
-            throw new AppException("Số lượng sản phẩm hiện tại không đủ, chỉ còn "
-                    + cartItem.getProductVariant().getStockQuantity());
+        ProductVariant variant = cartItem.getProductVariant();
+
+        if (newQuantity > variant.getStockQuantity()) {
+            throw new AppException("Not enough stock. Only " + variant.getStockQuantity() + " left.");
         }
+
         cartItem.setQuantity(newQuantity);
-        cartItem.setPrice(cartItem.getProductVariant().getProduct().getPrice() * newQuantity);
-        CartItem c = this.cartItemRepository.save(cartItem);
-        return convertToResponse(c);
+        cartItem.setPrice(variant.getProduct().getPrice() * newQuantity);
+        return convertToResponse(cartItemRepository.save(cartItem));
     }
 
     public CartItemResponse updateCartItem(Long cartItemId, Integer quantity) throws AppException {
-        CartItem cartItem = this.cartItemRepository
-                .findById(cartItemId)
-                .orElseThrow(() -> new AppException("cart Item không tồn tại"));
-        int newquantity = quantity;
-        if (newquantity > cartItem.getProductVariant().getStockQuantity()) {
-            throw new AppException("Số lượng sản phẩm hiện tại không đủ, chỉ còn "
-                    + cartItem.getProductVariant().getStockQuantity());
-        }
-        if (newquantity <= 0) {
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new AppException("Cart item does not exist"));
+
+        if (quantity <= 0) {
             deleteCartItem(cartItemId);
             return null;
         }
-        cartItem.setQuantity(newquantity);
-        this.cartItemRepository.save(cartItem);
-        return convertToResponse(cartItem);
+
+        ProductVariant variant = cartItem.getProductVariant();
+        if (quantity > variant.getStockQuantity()) {
+            throw new AppException("Not enough stock. Only " + variant.getStockQuantity() + " left.");
+        }
+
+        cartItem.setQuantity(quantity);
+        cartItem.setPrice(variant.getProduct().getPrice() * quantity);
+        return convertToResponse(cartItemRepository.save(cartItem));
     }
 
     @Transactional
     public void deleteCartItem(Long cartItemId) throws AppException {
-        CartItem cartItem = this.cartItemRepository
-                .findById(cartItemId)
-                .orElseThrow(() -> new AppException("cart item không tồn tại"));
-        this.cartItemRepository.delete(cartItem);
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new AppException("Cart item does not exist"));
+        cartItemRepository.delete(cartItem);
     }
+    @Transactional
+    public CartItemResponse decrementCartItem(Long cartItemId) throws AppException {
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new AppException("Cart item does not exist"));
 
-    public CartItemResponse desCartItem(Long cartItemId) throws AppException {
-        CartItem cartItem = this.cartItemRepository
-                .findById(cartItemId)
-                .orElseThrow(() -> new AppException("cart item không tồn tại"));
         int newQuantity = cartItem.getQuantity() - 1;
         if (newQuantity <= 0) {
             deleteCartItem(cartItemId);
             return null;
-        } else {
-            cartItem.setQuantity(newQuantity);
-            cartItem.setPrice(cartItem.getProductVariant().getProduct().getPrice() * newQuantity);
         }
-        CartItem c = this.cartItemRepository.save(cartItem);
-        return convertToResponse(c);
+
+        cartItem.setQuantity(newQuantity);
+        cartItem.setPrice(cartItem.getProductVariant().getProduct().getPrice() * newQuantity);
+        return convertToResponse(cartItemRepository.save(cartItem));
     }
 
-    public List<CartItemResponse> getAllCartItemByCartId(Long cartId) throws AppException {
-        Cart cart = this.cartRepository.findById(cartId).orElseThrow(() -> new AppException("cart không tồn tại"));
+    public List<CartItemResponse> getAllCartItemsByCartId(Long cartId) throws AppException {
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new AppException("Cart does not exist"));
 
-        List<CartItem> cartItems = this.cartItemRepository.findByCart(cart);
-
+        List<CartItem> cartItems = cartItemRepository.findByCart(cart);
         return cartItems.stream()
-                .map(this::convertToResponse) // <-- Chuyển CartItem thành CartItemResponse
+                .map(this::convertToResponse)
                 .toList();
     }
 }
